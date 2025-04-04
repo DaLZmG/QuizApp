@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: black;
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        #container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid gray;
+            border-radius: 10px;
+            background-color: #222;
+        }
+        .button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: gray;
+            color: black;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .button:hover {
+            background-color: darkgray;
+        }
+        #timer, #score {
+            margin-top: 10px;
+        }
+        input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Quiz App</h1>
+        <div class="section">
+            <input type="file" id="fileInput">
+            <button class="button" onclick="document.getElementById('fileInput').click();">Cargar Preguntas</button>
+        </div>
+        <div class="section">
+            <p id="question">Selecciona un archivo de preguntas.</p>
+        </div>
+        <div class="section">
+            <h3>Opciones:</h3>
+            <div id="options"></div>
+        </div>
+        <div class="section">
+            <h3>Controles:</h3>
+            <button class="button" onclick="skipQuestion()">Saltar Pregunta</button>
+            <button class="button" onclick="toggleShuffle()">Alternar Orden Aleatorio</button>
+            <button class="button" onclick="resetCounters()">Resetear Contadores</button>
+            <button class="button" onclick="resetTimer()">Resetear Tiempo</button>
+            <button class="button" onclick="toggleTimer()">Detener/Reanudar Temporizador</button>
+        </div>
+        <div class="section">
+            <p id="score">Correctas: 0 | Incorrectas: 0</p>
+            <p id="timer">Tiempo: 0:00</p>
+        </div>
+    </div>
+
+    <script>
+        let questions = [];
+        let originalQuestions = [];
+        let currentQuestion = 0;
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let randomOrder = false;
+        let startTime = Date.now();
+        let timerRunning = true;
+
+        function loadQuestions(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const lines = e.target.result.split("\n");
+                questions = lines.map(line => {
+                    let parts = line.trim().split(";");
+                    if (parts.length < 3) return null;
+                    let question = parts[0];
+                    let options = parts.slice(1, -1);
+                    let correctAnswer = parseInt(parts[parts.length - 1], 10);
+                    if (isNaN(correctAnswer) || correctAnswer < 1 || correctAnswer > options.length) return null;
+                    return { question, options, correctAnswer };
+                }).filter(q => q !== null);
+
+                originalQuestions = [...questions];
+                currentQuestion = 0;
+                correctCount = 0;
+                incorrectCount = 0;
+                updateScore();
+                showQuestion();
+            };
+            reader.readAsText(file);
+        }
+
+        function showQuestion() {
+            if (currentQuestion >= questions.length) {
+                alert("Has completado todas las preguntas.");
+                resetQuiz();
+                return;
+            }
+            
+            let q = questions[currentQuestion];
+            document.getElementById("question").textContent = q.question;
+            let optionsDiv = document.getElementById("options");
+            optionsDiv.innerHTML = "";
+
+            q.options.forEach((option, index) => {
+                let button = document.createElement("button");
+                button.textContent = `${index + 1}. ${option}`;
+                button.classList.add("button");
+                button.onclick = () => checkAnswer(index + 1);
+                optionsDiv.appendChild(button);
+            });
+        }
+
+        function checkAnswer(selected) {
+            let correctAnswer = questions[currentQuestion].correctAnswer;
+            if (selected === correctAnswer) {
+                correctCount++;
+                alert("¡Respuesta correcta!");
+            } else {
+                incorrectCount++;
+                alert(`Incorrecto. La respuesta era: ${questions[currentQuestion].options[correctAnswer - 1]}`);
+            }
+            updateScore();
+            currentQuestion++;
+            showQuestion();
+        }
+
+        function skipQuestion() {
+            currentQuestion++;
+            showQuestion();
+        }
+
+        function toggleShuffle() {
+            randomOrder = !randomOrder;
+            if (randomOrder) {
+                questions.sort(() => Math.random() - 0.5);
+                alert("Preguntas en orden aleatorio.");
+            } else {
+                questions = [...originalQuestions];
+                alert("Se restauró el orden original.");
+            }
+            currentQuestion = 0;
+            showQuestion();
+        }
+
+        function updateScore() {
+            document.getElementById("score").textContent = `Correctas: ${correctCount} | Incorrectas: ${incorrectCount}`;
+        }
+
+        document.getElementById("fileInput").addEventListener("change", loadQuestions);
+        
+        document.addEventListener("keydown", (event) => {
+            if (event.key >= '1' && event.key <= '4') {
+                checkAnswer(parseInt(event.key));
+            } else if (event.key === '5') {
+                toggleShuffle();
+            }
+        });
+    </script>
+</body>
+</html>
